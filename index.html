@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Beautiful Day — Ocean Conditions for Offshore & Bay Activities</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='25' fill='%23FFD93D'/%3E%3C/svg%3E">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-icon" aria-hidden="true">
+        <svg viewBox="0 0 60 60" width="44" height="44">
+          <circle cx="30" cy="26" r="11" fill="#FFD93D"/>
+          <g stroke="#FFD93D" stroke-width="2.5" stroke-linecap="round">
+            <line x1="30" y1="6" x2="30" y2="12"/>
+            <line x1="30" y1="40" x2="30" y2="46"/>
+            <line x1="10" y1="26" x2="16" y2="26"/>
+            <line x1="44" y1="26" x2="50" y2="26"/>
+            <line x1="16" y1="12" x2="20" y2="16"/>
+            <line x1="40" y1="36" x2="44" y2="40"/>
+            <line x1="16" y1="40" x2="20" y2="36"/>
+            <line x1="40" y1="16" x2="44" y2="12"/>
+          </g>
+          <path d="M2 48 Q12 42 22 48 T42 48 T62 48 L62 58 L2 58 Z" fill="#4A90D9"/>
+          <path d="M0 52 Q10 47 20 52 T40 52 T60 52" stroke="#fff" stroke-width="1.5" fill="none" opacity="0.6"/>
+        </svg>
+      </span>
+      <div>
+        <h1>Beautiful Day</h1>
+        <p class="tagline">Ocean conditions for offshore & bay adventures</p>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="search-panel">
+      <div class="search-row">
+        <div class="search-input-wrap">
+          <label for="locInput">Location</label>
+          <input id="locInput" type="text" placeholder="Search a place, port, or 'lat, lon'..." autocomplete="off"/>
+          <ul id="suggestions" class="suggestions" hidden></ul>
+        </div>
+        <div class="date-input-wrap">
+          <label for="dateInput">Date</label>
+          <input id="dateInput" type="date"/>
+        </div>
+        <div class="time-input-wrap">
+          <label for="hourInput">Hour</label>
+          <select id="hourInput">
+            <option value="all">All day</option>
+          </select>
+        </div>
+        <button id="checkBtn" class="primary-btn">Check Conditions</button>
+      </div>
+      <div class="quick-picks">
+        <span class="qp-label">Quick picks:</span>
+        <button class="chip" data-lat="25.7617" data-lon="-80.1918" data-name="Miami, FL">Miami</button>
+        <button class="chip" data-lat="25.6932" data-lon="-80.1628" data-name="Key Biscayne, FL">Key Biscayne</button>
+        <button class="chip" data-lat="26.1224" data-lon="-80.1373" data-name="Fort Lauderdale, FL">Fort Lauderdale</button>
+        <button class="chip" data-lat="25.0865" data-lon="-80.4473" data-name="Key Largo, FL">Key Largo</button>
+        <button class="chip" data-lat="24.9243" data-lon="-80.6276" data-name="Islamorada, FL">Islamorada</button>
+        <button class="chip" data-lat="24.5551" data-lon="-81.7800" data-name="Key West, FL">Key West</button>
+      </div>
+    </section>
+
+    <section class="map-section">
+      <div id="map" class="map-card"></div>
+      <p class="map-hint">Click anywhere on the map to pick that spot.</p>
+    </section>
+
+    <section id="resultsArea" class="results-area" hidden>
+      <div class="location-summary">
+        <h2 id="locName">—</h2>
+        <p id="locDetail"></p>
+      </div>
+
+      <div class="conditions-card">
+        <h3>Conditions Snapshot</h3>
+        <div id="conditionsSnapshot" class="snapshot-grid"></div>
+        <p class="data-source-note">Forecast: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> · Buoys: <a href="https://www.ndbc.noaa.gov/" target="_blank" rel="noopener">NDBC</a></p>
+      </div>
+
+      <div class="activities-section">
+        <h3>Activity Grades</h3>
+        <div id="activityCards" class="activity-grid"></div>
+      </div>
+
+      <div class="hourly-section">
+        <h3>Hourly Forecast</h3>
+        <div id="hourlyStrip" class="hourly-strip"></div>
+      </div>
+
+      <div class="buoys-section">
+        <h3>Nearby NDBC Buoys</h3>
+        <ul id="buoyList" class="buoy-list"></ul>
+      </div>
+    </section>
+
+    <section id="emptyState" class="empty-state">
+      <div class="empty-illustration">
+        <svg viewBox="0 0 200 120" width="220" height="132">
+          <circle cx="155" cy="35" r="20" fill="#FFD93D"/>
+          <g stroke="#FFD93D" stroke-width="2" stroke-linecap="round">
+            <line x1="155" y1="5" x2="155" y2="12"/>
+            <line x1="180" y1="35" x2="187" y2="35"/>
+            <line x1="172" y1="18" x2="177" y2="13"/>
+            <line x1="172" y1="52" x2="177" y2="57"/>
+          </g>
+          <path d="M0 80 Q25 70 50 80 T100 80 T150 80 T200 80 L200 120 L0 120 Z" fill="#4A90D9"/>
+          <path d="M0 90 Q25 82 50 90 T100 90 T150 90 T200 90" stroke="#fff" stroke-width="2" fill="none" opacity="0.7"/>
+          <path d="M0 100 Q25 94 50 100 T100 100 T150 100 T200 100" stroke="#fff" stroke-width="1.5" fill="none" opacity="0.5"/>
+          <g transform="translate(60 60)">
+            <rect x="0" y="10" width="40" height="14" rx="2" fill="#fff"/>
+            <polygon points="0,10 -8,18 0,24" fill="#fff"/>
+            <rect x="18" y="-12" width="2" height="22" fill="#8B5A2B"/>
+            <polygon points="20,-12 38,8 20,8" fill="#FFD93D"/>
+          </g>
+        </svg>
+      </div>
+      <h2>Find your perfect day on the water</h2>
+      <p>Pick a location and date above to see grades for fishing, sailing, snorkeling, and more.</p>
+    </section>
+
+    <div id="loadingOverlay" class="loading-overlay" hidden>
+      <div class="spinner"></div>
+      <p>Reading the waves...</p>
+    </div>
+
+    <div id="errorBox" class="error-box" hidden></div>
+  </main>
+
+  <footer>
+    <p>Data: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> · <a href="https://www.ndbc.noaa.gov/" target="_blank" rel="noopener">NDBC</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · <a href="https://nominatim.org/" target="_blank" rel="noopener">Nominatim</a></p>
+    <p class="disclaimer">For planning only. Always check official forecasts before heading out.</p>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="icons.js"></script>
+  <script src="buoys.js"></script>
+  <script src="grading.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
