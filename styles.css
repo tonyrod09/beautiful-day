@@ -527,6 +527,104 @@ main {
   line-height: 1.3;
 }
 
+/* ---------- Tides ---------- */
+.tides-section {
+  background: var(--foam);
+  border-radius: 16px;
+  padding: 20px 24px;
+  box-shadow: var(--shadow);
+}
+
+.tides-section h3 {
+  margin: 0 0 4px;
+  color: var(--ocean-deep);
+  font-size: 17px;
+}
+
+.tide-station-note {
+  margin: 0 0 14px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.tide-station-note a { color: var(--ocean-1); }
+
+.tide-chart {
+  margin-bottom: 14px;
+}
+
+.tide-label-text {
+  font-size: 10px;
+  fill: var(--muted);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.tide-tick-text {
+  font-size: 9px;
+  fill: #A8C5DD;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.tide-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.tide-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--sky-1), #DAF1FA);
+  font-size: 14px;
+  position: relative;
+}
+
+.tide-item.tide-high { border-left: 3px solid var(--ocean-1); }
+.tide-item.tide-low  { border-left: 3px solid var(--sky-2); }
+.tide-item.tide-next { background: linear-gradient(135deg, #DFF0FF, #C8E8F8); }
+
+.tide-arrow {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ocean-deep);
+}
+
+.tide-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  min-width: 32px;
+}
+
+.tide-time {
+  font-weight: 700;
+  color: var(--ink);
+  flex: 1;
+}
+
+.tide-ht {
+  font-weight: 700;
+  color: var(--ocean-1);
+}
+
+.tide-next-badge {
+  position: absolute;
+  top: -7px;
+  right: 10px;
+  background: var(--sun-1);
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 8px;
+}
+
 /* ---------- Buoys ---------- */
 .buoys-section {
   background: var(--foam);

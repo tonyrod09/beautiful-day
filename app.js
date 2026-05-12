@@ -8,6 +8,7 @@ const App = (() => {
     locationMarker: null,
     buoyMarkers: [],
     lastSearchAbort: null,
+    selectedDate: null,
   };
 
   const els = {};
@@ -29,6 +30,9 @@ const App = (() => {
     els.activityCards = document.getElementById("activityCards");
     els.hourlyStrip   = document.getElementById("hourlyStrip");
     els.buoyList      = document.getElementById("buoyList");
+    els.tideStation   = document.getElementById("tideStation");
+    els.tideChart     = document.getElementById("tideChart");
+    els.tideList      = document.getElementById("tideList");
 
     setupDateInput();
     setupHourInput();
@@ -265,13 +269,18 @@ const App = (() => {
       return;
     }
 
+    state.selectedDate = date;
     hideError();
     showLoading();
 
     try {
-      const [marine, weather] = await Promise.all([
+      const nearStation = TidesModule.nearestStation(state.location.lat, state.location.lon);
+
+      const [marine, weather, tidePreds] = await Promise.all([
         fetchMarine(state.location.lat, state.location.lon),
         fetchWeather(state.location.lat, state.location.lon),
+        TidesModule.fetchTidePredictions(nearStation.id, date)
+          .catch((e) => { console.warn("Tide fetch:", e.message); return null; }),
       ]);
 
       const slice = sliceForDate(marine, weather, date, hour);
@@ -279,7 +288,7 @@ const App = (() => {
         throw new Error("Forecast doesn't cover the requested date/hour.");
       }
 
-      render(slice, date, hour);
+      render(slice, date, hour, tidePreds, nearStation);
       updateMap(state.location);
       els.emptyState.hidden = true;
       els.resultsArea.hidden = false;
@@ -452,12 +461,13 @@ const App = (() => {
   }
 
   // ---------- Render ----------
-  function render(slice, dateStr, hour) {
+  function render(slice, dateStr, hour, tidePreds, nearStation) {
     const c = slice.conditions;
     renderHeader(dateStr, hour);
     renderSnapshot(c);
     renderActivities(c);
     renderHourly(slice.dailyHours);
+    renderTides(tidePreds, nearStation, dateStr);
     renderBuoys();
   }
 
@@ -522,6 +532,101 @@ const App = (() => {
         </div>
       </div>
     `).join("");
+  }
+
+  function renderTides(predictions, station, dateStr) {
+    if (!predictions || !predictions.length) {
+      els.tideStation.innerHTML = station
+        ? `Station: <a href="https://tidesandcurrents.noaa.gov/stationhome.html?id=${station.id}" target="_blank" rel="noopener">${escapeHtml(station.name)}</a> &middot; ${station.distanceMi.toFixed(0)} mi &middot; <em>No predictions available</em>`
+        : "Tide data unavailable for this location.";
+      els.tideChart.innerHTML = "";
+      els.tideList.innerHTML  = "";
+      return;
+    }
+
+    els.tideStation.innerHTML =
+      `Station: <a href="https://tidesandcurrents.noaa.gov/stationhome.html?id=${station.id}" target="_blank" rel="noopener">${escapeHtml(station.name)}</a> &middot; ${station.distanceMi.toFixed(0)} mi`;
+
+    const isToday = dateStr === new Date().toISOString().slice(0, 10);
+    const nowHours = isToday ? (new Date().getHours() + new Date().getMinutes() / 60) : null;
+
+    drawTideChart(predictions, nowHours);
+
+    // Find the next upcoming tide (if today).
+    let nextIdx = -1;
+    if (isToday) {
+      nextIdx = predictions.findIndex((p) => p.hours > nowHours);
+    }
+
+    els.tideList.innerHTML = predictions.map((p, i) => {
+      const isNext = i === nextIdx;
+      const arrow  = p.type === "H" ? "↑" : "↓";
+      const label  = p.type === "H" ? "HIGH" : "LOW";
+      const t12    = formatTideTime(p.time);
+      return `<div class="tide-item ${p.type === "H" ? "tide-high" : "tide-low"}${isNext ? " tide-next" : ""}">
+        <span class="tide-arrow">${arrow}</span>
+        <span class="tide-label">${label}</span>
+        <span class="tide-time">${t12}</span>
+        <span class="tide-ht">${p.v.toFixed(1)} ft</span>
+        ${isNext ? '<span class="tide-next-badge">Next</span>' : ""}
+      </div>`;
+    }).join("");
+  }
+
+  function drawTideChart(predictions, nowHours) {
+    const W = 400, H = 70, PAD = 18;
+    const allV  = predictions.map((p) => p.v);
+    const maxV  = Math.max(...allV) + 0.4;
+    const minV  = Math.min(...allV) - 0.2;
+    const range = maxV - minV || 1;
+
+    const px = (hours) => PAD + (hours / 24) * (W - PAD * 2);
+    const py = (v) => H - PAD / 2 - ((v - minV) / range) * (H - PAD);
+
+    // Generate 96 interpolated points (every 15 min).
+    const pts = [];
+    for (let i = 0; i <= 96; i++) {
+      const t = (i / 96) * 24;
+      pts.push([px(t), py(TidesModule.interpolateTideAt(t, predictions))]);
+    }
+    const pathD = pts.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+    const fillD = `${pathD} L${px(24)},${H} L${px(0)},${H} Z`;
+
+    // H/L markers and labels.
+    const markers = predictions.map((p) => {
+      const x = px(p.hours).toFixed(1);
+      const y = py(p.v).toFixed(1);
+      const isHigh = p.type === "H";
+      const labelY = isHigh ? (+y - 8).toFixed(1) : (+y + 16).toFixed(1);
+      return `<circle cx="${x}" cy="${y}" r="4" fill="${isHigh ? "#4A90D9" : "#87CEEB"}" stroke="#fff" stroke-width="1.5"/>
+              <text x="${x}" y="${labelY}" text-anchor="middle" class="tide-label-text">${formatTideTime(p.time)} · ${p.v.toFixed(1)}ft</text>`;
+    }).join("");
+
+    // "Now" cursor.
+    const nowLine = nowHours != null
+      ? `<line x1="${px(nowHours).toFixed(1)}" y1="0" x2="${px(nowHours).toFixed(1)}" y2="${H}" stroke="#E74C3C" stroke-width="1.5" stroke-dasharray="3,2"/>`
+      : "";
+
+    // Hour tick labels (6am, 12pm, 6pm).
+    const ticks = [[6, "6 AM"], [12, "12 PM"], [18, "6 PM"]].map(([h, lbl]) =>
+      `<text x="${px(h).toFixed(1)}" y="${H + 12}" text-anchor="middle" class="tide-tick-text">${lbl}</text>`
+    ).join("");
+
+    els.tideChart.innerHTML =
+      `<svg viewBox="0 -4 ${W} ${H + 18}" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block">
+        <path d="${fillD}" fill="#4A90D9" fill-opacity="0.12"/>
+        <path d="${pathD}" fill="none" stroke="#4A90D9" stroke-width="2" stroke-linejoin="round"/>
+        ${nowLine}
+        ${markers}
+        ${ticks}
+      </svg>`;
+  }
+
+  function formatTideTime(hhmm) {
+    const [h, m] = hhmm.split(":").map(Number);
+    const hh = h % 12 === 0 ? 12 : h % 12;
+    const mm = m > 0 ? `:${String(m).padStart(2, "0")}` : "";
+    return `${hh}${mm} ${h < 12 ? "AM" : "PM"}`;
   }
 
   function renderBuoys() {
