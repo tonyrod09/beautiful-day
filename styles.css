@@ -612,6 +612,34 @@ main {
   line-height: 1.5;
 }
 
+.nws-wave-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, var(--sky-1), #DAF1FA);
+  border-radius: 10px;
+  padding: 11px 14px;
+  margin-bottom: 12px;
+  border-left: 3px solid var(--ocean-1);
+}
+
+.nws-wave-icon { flex-shrink: 0; display: flex; }
+
+.nws-wave-label {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.nws-wave-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ocean-deep);
+}
+
 .nws-unavailable {
   font-size: 13px;
   color: var(--muted);

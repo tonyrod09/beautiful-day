@@ -46,6 +46,7 @@ There is no module system. Each file is wrapped in an IIFE that returns a single
    - **Open-Meteo Forecast** (`api.open-meteo.com/v1/forecast`): temperature, weather code, precipitation, cloud cover, visibility, wind speed/direction/gusts, is_day.
    - Both requested for 7 days hourly with `timezone=auto`.
    - **NOAA CO-OPS** (`api.tidesandcurrents.noaa.gov/api/prod/datagetter`): high/low tide predictions for the nearest station in `tides.js`. This fetch is wrapped in `.catch()` so a NOAA failure never blocks the main result.
+   - **NWS** (`api.weather.gov`): text marine/weather forecast via `fetchNWSForecast()` in `app.js`. Also wrapped in `.catch()` — never blocks the main result.
 3. `sliceForDate()` finds hourly indices matching the requested date. For "All day", it averages daytime hours (7–19); for a specific hour, it uses that single hour. Marine and weather hourly arrays are aligned by matching ISO timestamps (timestamps may diverge — never assume index parity).
 4. `aggregate()` produces a single `conditions` object used for grading. Most fields are means; **gusts use max** (worst gust matters more than average); precipitation is summed.
 5. `Grading.gradeAll(conditions)` returns one result per activity in `Grading.ACTIVITY_KEYS`.
@@ -68,6 +69,15 @@ To add an activity: add a `PROFILES[key]` entry, add the key to `ACTIVITY_KEYS`,
 All user-facing numbers are imperial: feet, knots, miles, °F, inches. The API calls explicitly request these via `length_unit=imperial`, `wind_speed_unit=kn`, `precipitation_unit=inch`, `temperature_unit=fahrenheit`. The one exception is Open-Meteo's `visibility`, which always returns meters — `app.js` converts to miles by dividing by `1609.344` in both `buildHourData` and `aggregate`. Buoy distances use `distanceMi` (haversine with `R = 3958.756`).
 
 If a unit threshold ever changes from km to mi (or similar), update **three** places: the conversion in `app.js`, the snapshot label in `renderSnapshot()`, and the grading thresholds + hint text in `grading.js`.
+
+### NWS Marine Forecast (`app.js` — `fetchNWSForecast`)
+
+Uses the [Weather.gov API](https://www.weather.gov/documentation/services-web-api) — CORS-enabled, no key needed. Two-tier fetch strategy in `fetchNWSForecast()`:
+
+1. **Marine zone** (preferred): `GET api.weather.gov/zones?point={lat},{lon}&type=coastal,offshore` → finds the containing zone → `GET {zone.id}/forecast` → returns marine-specific text with winds in knots and seas in feet.
+2. **Point forecast** (fallback): `GET api.weather.gov/points/{lat},{lon}` → `GET {properties.forecast}` → returns standard NWS forecast periods. Used when the coordinates don't fall in a marine zone (most inland/nearshore points).
+
+The section renders up to 4 forecast periods (name + detailed text) and shows two links: **NWS Marine Forecast** (`marine.weather.gov/MapClick.php`) and **Point Forecast** (`forecast.weather.gov/MapClick.php`), both built from the selected coordinates. A `MARINE ZONE` or `GENERAL` badge indicates which data source was used. The section appears between the hourly strip and the tides section in the results layout.
 
 ### Tides (`tides.js`)
 

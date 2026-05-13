@@ -283,7 +283,7 @@ const App = (() => {
         fetchWeather(state.location.lat, state.location.lon),
         TidesModule.fetchTidePredictions(nearStation.id, date)
           .catch((e) => { console.warn("Tide fetch:", e.message); return null; }),
-        fetchNWSForecast(state.location.lat, state.location.lon)
+        fetchNWSForecast(state.location.lat, state.location.lon, date)
           .catch((e) => { console.warn("NWS fetch:", e.message); return null; }),
       ]);
 
@@ -306,56 +306,67 @@ const App = (() => {
   }
 
   // ---------- NWS Marine Forecast ----------
-  async function fetchNWSForecast(lat, lon) {
+  async function fetchNWSForecast(lat, lon, dateStr) {
     const pt = `${lat.toFixed(4)},${lon.toFixed(4)}`;
+    const hdrs = { "Accept": "application/geo+json" };
+    let source = "general", zoneName = null, zoneId = null, periods = [], wavesFt = null;
 
-    // Try marine zone forecast first (coastal, then offshore).
-    const zoneRes = await fetch(
-      `https://api.weather.gov/zones?point=${pt}&type=coastal,offshore`,
-      { headers: { "Accept": "application/geo+json" } }
-    );
-    if (zoneRes.ok) {
-      const zd = await zoneRes.json();
-      const zone = zd.features?.[0];
-      if (zone) {
-        const fcRes = await fetch(`${zone.id}/forecast`,
-          { headers: { "Accept": "application/geo+json" } });
-        if (fcRes.ok) {
-          const fc = await fcRes.json();
-          const periods = (fc.properties?.periods || []).slice(0, 4);
-          if (periods.length) {
-            return {
-              source: "marine",
-              zoneName: zone.properties.name,
-              zoneId: zone.properties.id,
-              periods,
-            };
+    // 1. Try marine zones in priority order — each gives seas info in the text.
+    for (const type of ["coastal", "offshore", "marine"]) {
+      try {
+        const zRes = await fetch(`https://api.weather.gov/zones?point=${pt}&type=${type}`, { headers: hdrs });
+        if (!zRes.ok) continue;
+        const zd = await zRes.json();
+        const zone = zd.features?.[0];
+        if (!zone) continue;
+        const fcRes = await fetch(`${zone.id}/forecast`, { headers: hdrs });
+        if (!fcRes.ok) continue;
+        const fc = await fcRes.json();
+        const ps = (fc.properties?.periods || []).slice(0, 4);
+        if (!ps.length) continue;
+        source   = "marine";
+        zoneName = zone.properties.name;
+        zoneId   = zone.properties.id;
+        periods  = ps;
+        break;
+      } catch (_) { continue; }
+    }
+
+    // 2. Point API — gives text forecast fallback AND gridpoint wave height.
+    try {
+      const ptRes = await fetch(`https://api.weather.gov/points/${pt}`, { headers: hdrs });
+      if (ptRes.ok) {
+        const ptData = await ptRes.json();
+
+        // Text forecast fallback if no marine zone succeeded.
+        if (!periods.length) {
+          const fcRes = await fetch(ptData.properties?.forecast, { headers: hdrs });
+          if (fcRes.ok) {
+            const fcData = await fcRes.json();
+            periods = (fcData.properties?.periods || []).slice(0, 4);
+            const loc = ptData.properties?.relativeLocation?.properties;
+            if (!zoneName && loc) zoneName = `${loc.city}, ${loc.state}`;
+          }
+        }
+
+        // Gridpoint wave height (NWS numerical forecast, meters → feet).
+        const gdRes = await fetch(ptData.properties?.forecastGridData, { headers: hdrs });
+        if (gdRes.ok) {
+          const gd = await gdRes.json();
+          const uom = gd.properties?.waveHeight?.uom || "";
+          const vals = (gd.properties?.waveHeight?.values || [])
+            .filter((v) => v.value !== null && v.validTime.slice(0, 10) === dateStr);
+          if (vals.length) {
+            const avg = vals.reduce((s, v) => s + v.value, 0) / vals.length;
+            // Convert to feet: NWS uses meters unless uom explicitly says feet.
+            wavesFt = uom.includes("ft") ? avg : avg * 3.28084;
           }
         }
       }
-    }
+    } catch (_) {}
 
-    // Fall back to regular point forecast.
-    const ptRes = await fetch(`https://api.weather.gov/points/${pt}`,
-      { headers: { "Accept": "application/geo+json" } });
-    if (!ptRes.ok) return null;
-    const ptData = await ptRes.json();
-    const fcUrl = ptData.properties?.forecast;
-    if (!fcUrl) return null;
-
-    const fcRes = await fetch(fcUrl, { headers: { "Accept": "application/geo+json" } });
-    if (!fcRes.ok) return null;
-    const fcData = await fcRes.json();
-    const periods = (fcData.properties?.periods || []).slice(0, 4);
-    if (!periods.length) return null;
-
-    const loc = ptData.properties?.relativeLocation?.properties;
-    return {
-      source: "general",
-      zoneName: loc ? `${loc.city}, ${loc.state}` : null,
-      zoneId: null,
-      periods,
-    };
+    if (!periods.length && wavesFt === null) return null;
+    return { source, zoneName, zoneId, periods, wavesFt };
   }
 
   function renderNWSForecast(data) {
@@ -367,7 +378,7 @@ const App = (() => {
       `<a href="${marinUrl}" target="_blank" rel="noopener">NWS Marine Forecast ↗</a>` +
       ` &nbsp;·&nbsp; <a href="${nwsUrl}" target="_blank" rel="noopener">Point Forecast ↗</a>`;
 
-    if (!data?.periods?.length) {
+    if (!data?.periods?.length && data?.wavesFt == null) {
       els.nwsContent.innerHTML =
         `<p class="nws-unavailable">Text forecast unavailable for this location.</p>`;
       return;
@@ -380,13 +391,21 @@ const App = (() => {
     const zoneLine = data.zoneName
       ? `<p class="nws-zone">${badge} ${escapeHtml(data.zoneName)}</p>` : "";
 
-    const cards = data.periods.map((p) => `
+    const wavesRow = (data.wavesFt != null && data.wavesFt > 0.1)
+      ? `<div class="nws-wave-row">
+           <span class="nws-wave-icon">${Icons.wavesModerate(26)}</span>
+           <span class="nws-wave-label">NWS Wave Height</span>
+           <span class="nws-wave-value">${data.wavesFt.toFixed(1)} ft avg</span>
+         </div>` : "";
+
+    const cards = (data.periods || []).map((p) => `
       <div class="nws-period">
         <div class="nws-period-name">${escapeHtml(p.name)}</div>
         <div class="nws-period-body">${escapeHtml(p.detailedForecast)}</div>
       </div>`).join("");
 
-    els.nwsContent.innerHTML = zoneLine + `<div class="nws-periods">${cards}</div>`;
+    els.nwsContent.innerHTML =
+      zoneLine + wavesRow + (cards ? `<div class="nws-periods">${cards}</div>` : "");
   }
 
   // ---------- Forecast fetches ----------
