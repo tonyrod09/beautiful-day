@@ -65,14 +65,25 @@ body::before {
 
 .brand {
   display: flex;
+  flex-direction: column;
   align-items: center;
+  gap: 6px;
 }
 
 .brand-logo {
   height: 70px;
   width: auto;
   display: block;
-  align-items: center;
+}
+
+.tagline {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 4px rgba(14, 60, 120, 0.4);
+  text-align: center;
+  letter-spacing: 0.2px;
 }
 
 /* ---------- Main ---------- */
