@@ -33,6 +33,8 @@ const App = (() => {
     els.tideStation   = document.getElementById("tideStation");
     els.tideChart     = document.getElementById("tideChart");
     els.tideList      = document.getElementById("tideList");
+    els.nwsContent    = document.getElementById("nwsContent");
+    els.nwsLink       = document.getElementById("nwsLink");
 
     setupDateInput();
     setupHourInput();
@@ -276,11 +278,13 @@ const App = (() => {
     try {
       const nearStation = TidesModule.nearestStation(state.location.lat, state.location.lon);
 
-      const [marine, weather, tidePreds] = await Promise.all([
+      const [marine, weather, tidePreds, nwsData] = await Promise.all([
         fetchMarine(state.location.lat, state.location.lon),
         fetchWeather(state.location.lat, state.location.lon),
         TidesModule.fetchTidePredictions(nearStation.id, date)
           .catch((e) => { console.warn("Tide fetch:", e.message); return null; }),
+        fetchNWSForecast(state.location.lat, state.location.lon)
+          .catch((e) => { console.warn("NWS fetch:", e.message); return null; }),
       ]);
 
       const slice = sliceForDate(marine, weather, date, hour);
@@ -288,7 +292,7 @@ const App = (() => {
         throw new Error("Forecast doesn't cover the requested date/hour.");
       }
 
-      render(slice, date, hour, tidePreds, nearStation);
+      render(slice, date, hour, tidePreds, nearStation, nwsData);
       updateMap(state.location);
       els.emptyState.hidden = true;
       els.resultsArea.hidden = false;
@@ -299,6 +303,90 @@ const App = (() => {
     } finally {
       hideLoading();
     }
+  }
+
+  // ---------- NWS Marine Forecast ----------
+  async function fetchNWSForecast(lat, lon) {
+    const pt = `${lat.toFixed(4)},${lon.toFixed(4)}`;
+
+    // Try marine zone forecast first (coastal, then offshore).
+    const zoneRes = await fetch(
+      `https://api.weather.gov/zones?point=${pt}&type=coastal,offshore`,
+      { headers: { "Accept": "application/geo+json" } }
+    );
+    if (zoneRes.ok) {
+      const zd = await zoneRes.json();
+      const zone = zd.features?.[0];
+      if (zone) {
+        const fcRes = await fetch(`${zone.id}/forecast`,
+          { headers: { "Accept": "application/geo+json" } });
+        if (fcRes.ok) {
+          const fc = await fcRes.json();
+          const periods = (fc.properties?.periods || []).slice(0, 4);
+          if (periods.length) {
+            return {
+              source: "marine",
+              zoneName: zone.properties.name,
+              zoneId: zone.properties.id,
+              periods,
+            };
+          }
+        }
+      }
+    }
+
+    // Fall back to regular point forecast.
+    const ptRes = await fetch(`https://api.weather.gov/points/${pt}`,
+      { headers: { "Accept": "application/geo+json" } });
+    if (!ptRes.ok) return null;
+    const ptData = await ptRes.json();
+    const fcUrl = ptData.properties?.forecast;
+    if (!fcUrl) return null;
+
+    const fcRes = await fetch(fcUrl, { headers: { "Accept": "application/geo+json" } });
+    if (!fcRes.ok) return null;
+    const fcData = await fcRes.json();
+    const periods = (fcData.properties?.periods || []).slice(0, 4);
+    if (!periods.length) return null;
+
+    const loc = ptData.properties?.relativeLocation?.properties;
+    return {
+      source: "general",
+      zoneName: loc ? `${loc.city}, ${loc.state}` : null,
+      zoneId: null,
+      periods,
+    };
+  }
+
+  function renderNWSForecast(data) {
+    const { lat, lon } = state.location;
+    const nwsUrl  = `https://forecast.weather.gov/MapClick.php?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}&unit=0&lg=en&FcstType=text`;
+    const marinUrl = `https://marine.weather.gov/MapClick.php?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}&unit=0&lg=en&FcstType=text`;
+
+    els.nwsLink.innerHTML =
+      `<a href="${marinUrl}" target="_blank" rel="noopener">NWS Marine Forecast ↗</a>` +
+      ` &nbsp;·&nbsp; <a href="${nwsUrl}" target="_blank" rel="noopener">Point Forecast ↗</a>`;
+
+    if (!data?.periods?.length) {
+      els.nwsContent.innerHTML =
+        `<p class="nws-unavailable">Text forecast unavailable for this location.</p>`;
+      return;
+    }
+
+    const badge = data.source === "marine"
+      ? `<span class="nws-badge nws-badge-marine">Marine Zone</span>`
+      : `<span class="nws-badge nws-badge-general">General</span>`;
+
+    const zoneLine = data.zoneName
+      ? `<p class="nws-zone">${badge} ${escapeHtml(data.zoneName)}</p>` : "";
+
+    const cards = data.periods.map((p) => `
+      <div class="nws-period">
+        <div class="nws-period-name">${escapeHtml(p.name)}</div>
+        <div class="nws-period-body">${escapeHtml(p.detailedForecast)}</div>
+      </div>`).join("");
+
+    els.nwsContent.innerHTML = zoneLine + `<div class="nws-periods">${cards}</div>`;
   }
 
   // ---------- Forecast fetches ----------
@@ -461,12 +549,13 @@ const App = (() => {
   }
 
   // ---------- Render ----------
-  function render(slice, dateStr, hour, tidePreds, nearStation) {
+  function render(slice, dateStr, hour, tidePreds, nearStation, nwsData) {
     const c = slice.conditions;
     renderHeader(dateStr, hour);
     renderSnapshot(c);
     renderActivities(c);
     renderHourly(slice.dailyHours);
+    renderNWSForecast(nwsData);
     renderTides(tidePreds, nearStation, dateStr);
     renderBuoys();
   }
