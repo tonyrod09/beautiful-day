@@ -60,7 +60,7 @@ body::before {
   padding: 24px 32px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
 }
 
 .brand {
