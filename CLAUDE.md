@@ -4,25 +4,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-"Beautiful Day" — a single-page static site that grades offshore/bay activities (fishing, sailing, snorkeling, etc.) for a user-supplied location and date, using only free public APIs called directly from the browser.
+This repository hosts **two sibling single-page static sites** that grade water-activity conditions using only free public APIs called from the browser. Same architectural pattern (IIFE namespaces, no build, free APIs), but they **share no source files** — each app has its own `index.html`, `app.js`, `grading.js`, `icons.js`, `buoys.js`, `tides.js`, `styles.css`.
 
-No build step, no package manager, no backend. The whole app is plain HTML/CSS/JS files served as-is.
+1. **Beautiful Day** (repo root) — broad audience, eight activities (offshore/bay fishing, sailing, sandbar, snorkeling, diving, paddleboarding, kayaking). Works globally, South FL–biased quick picks.
+2. **FishyBoat** (`fishyboat/` subdirectory) — narrow small-boat fishing safety tool. Three scenarios (offshore / inlet–reef / bay), Miami-focused, GO/CAUTION/ROUGH/STAY-HOME verdict UI. See the FishyBoat section below for what differs.
 
-**Audience focus:** the "Quick picks" chips in `index.html` are South Florida / Florida Keys spots (Miami, Key Biscayne, Fort Lauderdale, Key Largo, Islamorada, Key West) — that's the primary user. The app itself works for any coastal location worldwide (geocoding, map click, and `lat, lon` entry all work globally), and the NDBC buoy reference data still covers all US coasts. When adding more example chips, default to the South Florida / Keys / Bahamas region unless the user asks otherwise.
+When working on one app, do not edit the other unless the user explicitly asks to sync them.
+
+No build step, no package manager, no backend. Plain HTML/CSS/JS served as-is.
+
+**Audience focus (Beautiful Day):** the "Quick picks" chips in `index.html` are South Florida / Florida Keys spots (Miami, Key Biscayne, Fort Lauderdale, Key Largo, Islamorada, Key West) — that's the primary user. The app itself works for any coastal location worldwide (geocoding, map click, and `lat, lon` entry all work globally), and the NDBC buoy reference data still covers all US coasts. When adding more example chips, default to the South Florida / Keys / Bahamas region unless the user asks otherwise.
 
 ## Running locally
 
-A preview launch profile is committed at `.claude/launch.json`. To serve manually:
+Two preview launch profiles are committed at `.claude/launch.json`. Manual serve commands:
 
 ```
-python3 -m http.server 8765
+python3 -m http.server 8765                              # Beautiful Day → http://localhost:8765/
+python3 -m http.server 8766 --directory fishyboat        # FishyBoat     → http://localhost:8766/
 ```
 
-Open `http://localhost:8765/`. **Geolocation requires HTTPS or `localhost`** — opening `index.html` via `file://` will disable the auto-center-on-user feature.
+**Geolocation requires HTTPS or `localhost`** — opening `index.html` via `file://` will disable the auto-center-on-user feature.
 
 There are no tests, lint config, or build commands.
 
-## Architecture
+## Architecture (Beautiful Day)
 
 ### Script load order matters
 
@@ -97,6 +103,54 @@ Leaflet is loaded from CDN. The map lives in its own always-visible section abov
 - **Grade colors are binary, not a gradient.** `--grade-a/b/c` are all the same blue (`#4A90D9`) and `--grade-d/f` are both the same red (`#E74C3C`). The letter inside the badge carries the granularity, not the color. Don't reintroduce per-grade hues without confirming.
 - **Only the grade badge is grade-colored, not the card itself.** The grade-color rules are scoped as `.grade-badge.grade-X` so they only paint the circle. See gotcha below.
 - **Logo (`BD_logo_trnsp.png`)** is a transparent-background PNG with black and white art pixels — no CSS `filter` is needed. It is displayed with `filter: drop-shadow(...)` for contrast against the light sky. Do NOT apply `filter: invert(1)` (that turns the white art black) or `filter: brightness(0) invert(1)` (makes everything white and invisible against the light sky). The tagline below the logo uses the `.tagline` class.
+
+## FishyBoat (`fishyboat/`)
+
+FishyBoat is a self-contained variant. Same script-load pattern, same Open-Meteo + NOAA CO-OPS + NWS fetch pipeline, same `sliceForDate` / `aggregate` logic as Beautiful Day — only the differences worth knowing about are listed here.
+
+### Three fishing scenarios, not eight activities
+
+`Grading.ACTIVITY_KEYS` is `["fishing-offshore", "fishing-reef", "fishing-bay"]`. Each scenario uses different wave/wind threshold tuples defined as constants at the top of `grading.js` (`WIND_OFFSHORE`/`WIND_BAY`/`WIND_REEF`, `WAVE_OFFSHORE`/`WAVE_BAY`/`WAVE_REEF`):
+
+- **Bay** uses *tighter* wave thresholds (`WAVE_BAY = [0.5, 1, 1.5, 2.5]`) because in a sheltered bay anything over ~2 ft means it's already blowing hard — and *slightly more lenient* wind (`WIND_BAY = [5, 10, 13, 16]`) because chop, not wind, is the limit.
+- **Inlet/reef** adds wave-period sensitivity (short steep seas break at the inlet mouth).
+- **Offshore** is the baseline — directly reflects the user's stated thresholds (waves <1ft great / 1–2ft good / 3–5ft rough / 5+ft dangerous; wind 0–5kt / 5–9kt / 9–13kt / 13+kt).
+
+If you tune these constants, all three scenarios pull from the same place — change once, propagates to grading and to the empty-state explainer.
+
+### Verdict box (the headline UI feature)
+
+`renderVerdict()` in `app.js` displays a colored headline above the activity cards. Two important pieces:
+
+- **`Grading.overallVerdict(grades)`** picks the **best (mildest) of the three** scenarios as the "Best option" — by design, not a bug. Bay fishing is usually safe even when offshore is rough, so showing the worst would be misleading.
+- A "Toughest scenario" subline appears only when worst ≠ best.
+- Each grade letter maps to a `{ tag, text }` pair in `verdictForGrade()`: `A/B → "GO"`, `C → "CAUTION"`, `D → "ROUGH"`, `F → "STAY HOME"`. The tag class is `verdict-tag-<lowercased-tag-with-hyphens>` — `STAY HOME` becomes `verdict-tag-stay-home`.
+
+### Grade colors are NOT binary here
+
+Unlike Beautiful Day, FishyBoat uses **per-grade colors** because this is a safety tool — the user needs to read severity at a glance, not just the letter:
+
+```
+--grade-a: #2E6FB5  (deep blue, safe)
+--grade-b: #4A90D9  (lighter blue, safe)
+--grade-c: #F0A929  (amber, caution)
+--grade-d: #E67E22  (orange, rough)
+--grade-f: #E74C3C  (red, dangerous)
+```
+
+Both the grade badge AND the `.verdict-headline` element pick up these colors (the headline via `.verdict-headline.grade-X` rules, the badge via `.grade-badge.grade-X` rules — the badge rules in particular are still compound selectors to avoid card bleed, same gotcha as Beautiful Day).
+
+### Wind is in knots; thresholds were converted from a mph spec
+
+User originally specified mph (0–5/5–10/10–15/15+). The site displays knots throughout because that's marine standard. Conversion: 5 mph → 4 kt, 10 mph → 9 kt, 13 mph → 11 kt, 15 mph → 13 kt. The empty-state explainer card uses the **knot** numbers — keep them in sync with the constants in `grading.js` if either changes.
+
+### Curated South FL data
+
+`buoys.js` and `tides.js` ship trimmed lists (~12 buoys, ~11 tide stations, all Florida + Gulf Coast). The map defaults to Miami (25.7617, -80.1918) at zoom 10. `setupMap` does **not** call geolocation here (unlike Beautiful Day) — the Miami default is intentional.
+
+### Map zooms on every location pick
+
+`setupQuickPicks` and the suggestion-click handler call `state.map.setView(..., 11)` after `setLocation`, so the map follows the user's selection without waiting for "Check Conditions". Beautiful Day delays the pan until `updateMap()` runs after a successful fetch.
 
 ## Gotchas
 

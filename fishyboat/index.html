@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FishyBoat — Is it safe to take the boat out today?</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='44' cy='16' r='10' fill='%23FFD93D'/%3E%3Cpath d='M28 36 Q12 28 4 36 Q12 44 28 36 Z' fill='%23FFD93D' stroke='%23F0A929' stroke-width='2'/%3E%3Cpolygon points='28,36 38,30 38,42' fill='%23FFD93D' stroke='%23F0A929' stroke-width='2'/%3E%3C/svg%3E">
+</head>
+<body>
+
+  <header class="topbar">
+    <div id="brandLogo" class="brand-logo"></div>
+    <h1 class="brand-title">Fishy<span class="brand-title-sun">Boat</span></h1>
+    <p class="tagline">Is it safe to take the small boat out? Check the seas, wind, and tides for South Florida.</p>
+  </header>
+
+  <main>
+    <section class="search-panel">
+      <div class="search-row">
+        <div class="search-input-wrap">
+          <label for="locInput">Location</label>
+          <input id="locInput" type="text" placeholder="Search a Miami area spot, or 'lat, lon'..." autocomplete="off"/>
+          <ul id="suggestions" class="suggestions" hidden></ul>
+        </div>
+        <div class="date-input-wrap">
+          <label for="dateInput">Date</label>
+          <input id="dateInput" type="date"/>
+        </div>
+        <div class="time-input-wrap">
+          <label for="hourInput">Hour</label>
+          <select id="hourInput">
+            <option value="all">All day</option>
+          </select>
+        </div>
+        <button id="checkBtn" class="primary-btn">Check Conditions</button>
+      </div>
+      <div class="quick-picks">
+        <span class="qp-label">Quick picks:</span>
+        <button class="chip" data-lat="25.7617"  data-lon="-80.1918" data-name="Miami">Miami</button>
+        <button class="chip" data-lat="25.7689"  data-lon="-80.1310" data-name="Government Cut">Government Cut</button>
+        <button class="chip" data-lat="25.6932"  data-lon="-80.1628" data-name="Key Biscayne">Key Biscayne</button>
+        <button class="chip" data-lat="25.6300"  data-lon="-80.1700" data-name="Stiltsville / Biscayne Bay">Biscayne Bay</button>
+        <button class="chip" data-lat="25.9050"  data-lon="-80.1230" data-name="Haulover Inlet">Haulover Inlet</button>
+        <button class="chip" data-lat="26.1224"  data-lon="-80.1373" data-name="Fort Lauderdale">Ft. Lauderdale</button>
+        <button class="chip" data-lat="25.0865"  data-lon="-80.4473" data-name="Key Largo">Key Largo</button>
+      </div>
+    </section>
+
+    <section class="map-section">
+      <div id="map" class="map-card"></div>
+      <p class="map-hint">Click anywhere on the map to drop a pin — the yellow marker is your spot.</p>
+    </section>
+
+    <section id="resultsArea" class="results-area" hidden>
+      <div class="location-summary">
+        <h2 id="locName">—</h2>
+        <p id="locDetail"></p>
+      </div>
+
+      <div id="verdictBox" class="verdict-box"></div>
+
+      <div class="conditions-card">
+        <h3>Conditions Snapshot</h3>
+        <div id="conditionsSnapshot" class="snapshot-grid"></div>
+        <p class="data-source-note">Forecast: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> · Buoys: <a href="https://www.ndbc.noaa.gov/" target="_blank" rel="noopener">NDBC</a> · Tides: <a href="https://tidesandcurrents.noaa.gov/" target="_blank" rel="noopener">NOAA CO-OPS</a></p>
+      </div>
+
+      <div class="activities-section">
+        <h3>Fishing Scenarios</h3>
+        <div id="activityCards" class="activity-grid"></div>
+      </div>
+
+      <div class="hourly-section">
+        <h3>Hourly Forecast</h3>
+        <div id="hourlyStrip" class="hourly-strip"></div>
+      </div>
+
+      <div class="nws-section">
+        <div class="nws-header">
+          <h3>NWS Marine Advisories</h3>
+          <p id="nwsLink" class="nws-links"></p>
+        </div>
+        <div id="nwsContent"></div>
+      </div>
+
+      <div class="tides-section">
+        <h3>Tides</h3>
+        <p id="tideStation" class="tide-station-note"></p>
+        <div id="tideChart" class="tide-chart"></div>
+        <div id="tideList" class="tide-list"></div>
+      </div>
+
+      <div class="buoys-section">
+        <h3>Nearby NDBC Buoys</h3>
+        <ul id="buoyList" class="buoy-list"></ul>
+      </div>
+    </section>
+
+    <section id="emptyState" class="empty-state">
+      <h2>Should I take the boat out?</h2>
+      <p>Pick a date, hour, and spot above. FishyBoat grades the seas, wind, and tides for small-boat fishing — offshore, the reef, and inside the bay.</p>
+      <div class="empty-thresholds">
+        <div class="empty-threshold-card">
+          <h4>Wave Height (small boat)</h4>
+          <ul>
+            <li><span class="pill pill-great">A</span> Under 1 ft — flat calm</li>
+            <li><span class="pill pill-good">B</span> 1–2 ft — easy ride</li>
+            <li><span class="pill pill-rough">D</span> 3–5 ft — rough, expert only</li>
+            <li><span class="pill pill-danger">F</span> 5+ ft — dangerous, stay home</li>
+          </ul>
+        </div>
+        <div class="empty-threshold-card">
+          <h4>Wind (knots)</h4>
+          <ul>
+            <li><span class="pill pill-great">A</span> Under 5 kt — glass</li>
+            <li><span class="pill pill-good">B</span> 5–9 kt — light breeze</li>
+            <li><span class="pill pill-rough">D</span> 9–13 kt — chop building</li>
+            <li><span class="pill pill-danger">F</span> 13+ kt — small craft warning territory</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <div id="loadingOverlay" class="loading-overlay" hidden>
+      <div class="spinner"></div>
+      <p>Reading the seas...</p>
+    </div>
+
+    <div id="errorBox" class="error-box" hidden></div>
+  </main>
+
+  <footer>
+    <p>Data: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> · <a href="https://www.ndbc.noaa.gov/" target="_blank" rel="noopener">NDBC</a> · <a href="https://tidesandcurrents.noaa.gov/" target="_blank" rel="noopener">NOAA CO-OPS</a> · <a href="https://www.weather.gov/" target="_blank" rel="noopener">NWS</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></p>
+    <p class="disclaimer">For planning only — always check official NWS forecasts and marine advisories before leaving the dock.</p>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="icons.js"></script>
+  <script src="buoys.js"></script>
+  <script src="tides.js"></script>
+  <script src="grading.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
