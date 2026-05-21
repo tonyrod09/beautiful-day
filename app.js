@@ -1,9 +1,9 @@
-/* ============ Beautiful Day — Main App ============ */
+/* ============ FishyBoat — Main App ============ */
 
 const App = (() => {
 
   const state = {
-    location: null,          // { lat, lon, name, detail }
+    location: null,      // { lat, lon, name, detail }
     map: null,
     locationMarker: null,
     buoyMarkers: [],
@@ -13,7 +13,6 @@ const App = (() => {
 
   const els = {};
 
-  // ---------- Init ----------
   function init() {
     els.locInput      = document.getElementById("locInput");
     els.suggestions   = document.getElementById("suggestions");
@@ -26,6 +25,7 @@ const App = (() => {
     els.errorBox      = document.getElementById("errorBox");
     els.locName       = document.getElementById("locName");
     els.locDetail     = document.getElementById("locDetail");
+    els.verdictBox    = document.getElementById("verdictBox");
     els.snapshot      = document.getElementById("conditionsSnapshot");
     els.activityCards = document.getElementById("activityCards");
     els.hourlyStrip   = document.getElementById("hourlyStrip");
@@ -35,6 +35,9 @@ const App = (() => {
     els.tideList      = document.getElementById("tideList");
     els.nwsContent    = document.getElementById("nwsContent");
     els.nwsLink       = document.getElementById("nwsLink");
+    els.brandLogo     = document.getElementById("brandLogo");
+
+    if (els.brandLogo) els.brandLogo.innerHTML = Icons.logo(80);
 
     setupDateInput();
     setupHourInput();
@@ -74,6 +77,7 @@ const App = (() => {
         setLocation({ lat, lon, name, detail: `${lat.toFixed(3)}, ${lon.toFixed(3)}` });
         els.locInput.value = name;
         hideSuggestions();
+        state.map.setView([lat, lon], 11);
       });
     });
   }
@@ -85,19 +89,9 @@ const App = (() => {
     els.locInput.addEventListener("input", () => {
       clearTimeout(debounceTimer);
       const q = els.locInput.value.trim();
-
-      // Try parsing "lat, lon" directly.
       const latlon = parseLatLon(q);
-      if (latlon) {
-        hideSuggestions();
-        return;
-      }
-
-      if (q.length < 3) {
-        hideSuggestions();
-        return;
-      }
-
+      if (latlon) { hideSuggestions(); return; }
+      if (q.length < 3) { hideSuggestions(); return; }
       debounceTimer = setTimeout(() => geocode(q), 320);
     });
 
@@ -112,7 +106,6 @@ const App = (() => {
           checkConditions();
           return;
         }
-        // If suggestions are open, pick first; otherwise geocode + pick.
         const first = els.suggestions.querySelector("li");
         if (first) {
           first.click();
@@ -144,7 +137,6 @@ const App = (() => {
   async function geocode(query) {
     if (state.lastSearchAbort) state.lastSearchAbort.abort();
     state.lastSearchAbort = new AbortController();
-
     try {
       const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=6&addressdetails=1`;
       const res = await fetch(url, {
@@ -166,14 +158,11 @@ const App = (() => {
       const li = document.createElement("li");
       li.textContent = r.display_name;
       li.addEventListener("click", () => {
-        setLocation({
-          lat: parseFloat(r.lat),
-          lon: parseFloat(r.lon),
-          name: r.display_name.split(",")[0],
-          detail: r.display_name,
-        });
+        const lat = parseFloat(r.lat), lon = parseFloat(r.lon);
+        setLocation({ lat, lon, name: r.display_name.split(",")[0], detail: r.display_name });
         els.locInput.value = r.display_name.split(",")[0];
         hideSuggestions();
+        state.map.setView([lat, lon], 11);
       });
       els.suggestions.appendChild(li);
     }
@@ -187,7 +176,8 @@ const App = (() => {
 
   // ---------- Map ----------
   function setupMap() {
-    state.map = L.map("map", { zoomControl: true }).setView([32.0, -80.0], 4);
+    // Default to Miami area.
+    state.map = L.map("map", { zoomControl: true }).setView([25.7617, -80.1918], 10);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "© OpenStreetMap contributors",
       maxZoom: 18,
@@ -203,27 +193,12 @@ const App = (() => {
       els.locInput.value = `${lat.toFixed(3)}, ${lng.toFixed(3)}`;
       hideSuggestions();
     });
-
-    centerOnGeolocation();
-  }
-
-  function centerOnGeolocation() {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        if (state.location) return;  // user already picked a spot — don't yank the view
-        state.map.setView([pos.coords.latitude, pos.coords.longitude], 9);
-      },
-      () => { /* permission denied or unavailable — keep default view */ },
-      { timeout: 6000, maximumAge: 600000 }
-    );
   }
 
   function updateMap(loc) {
     if (!state.map) return;
-    state.map.setView([loc.lat, loc.lon], 9);
+    state.map.setView([loc.lat, loc.lon], 10);
 
-    // Location marker.
     const targetIcon = L.divIcon({
       className: "",
       html: `<div class="target-marker"></div>`,
@@ -235,7 +210,6 @@ const App = (() => {
       .addTo(state.map)
       .bindPopup(`<b>${escapeHtml(loc.name)}</b><br>${loc.lat.toFixed(3)}, ${loc.lon.toFixed(3)}`);
 
-    // Buoy markers (nearest 5).
     state.buoyMarkers.forEach((m) => state.map.removeLayer(m));
     state.buoyMarkers = [];
     const near = nearestBuoys(loc.lat, loc.lon, 5);
@@ -253,10 +227,7 @@ const App = (() => {
     }
   }
 
-  // ---------- Location ----------
-  function setLocation(loc) {
-    state.location = loc;
-  }
+  function setLocation(loc) { state.location = loc; }
 
   // ---------- Check Conditions ----------
   async function checkConditions() {
@@ -266,10 +237,7 @@ const App = (() => {
     }
     const date = els.dateInput.value;
     const hour = els.hourInput.value;
-    if (!date) {
-      showError("Pick a date.");
-      return;
-    }
+    if (!date) { showError("Pick a date."); return; }
 
     state.selectedDate = date;
     hideError();
@@ -288,9 +256,7 @@ const App = (() => {
       ]);
 
       const slice = sliceForDate(marine, weather, date, hour);
-      if (!slice) {
-        throw new Error("Forecast doesn't cover the requested date/hour.");
-      }
+      if (!slice) throw new Error("Forecast doesn't cover the requested date/hour.");
 
       render(slice, date, hour, tidePreds, nearStation, nwsData);
       updateMap(state.location);
@@ -309,9 +275,8 @@ const App = (() => {
   async function fetchNWSForecast(lat, lon, dateStr) {
     const pt = `${lat.toFixed(4)},${lon.toFixed(4)}`;
     const hdrs = { "Accept": "application/geo+json" };
-    let source = "general", zoneName = null, zoneId = null, periods = [], wavesFt = null;
+    let source = "general", zoneName = null, periods = [], wavesFt = null;
 
-    // 1. Try marine zones in priority order — each gives seas info in the text.
     for (const type of ["coastal", "offshore", "marine"]) {
       try {
         const zRes = await fetch(`https://api.weather.gov/zones?point=${pt}&type=${type}`, { headers: hdrs });
@@ -326,19 +291,16 @@ const App = (() => {
         if (!ps.length) continue;
         source   = "marine";
         zoneName = zone.properties.name;
-        zoneId   = zone.properties.id;
         periods  = ps;
         break;
       } catch (_) { continue; }
     }
 
-    // 2. Point API — gives text forecast fallback AND gridpoint wave height.
     try {
       const ptRes = await fetch(`https://api.weather.gov/points/${pt}`, { headers: hdrs });
       if (ptRes.ok) {
         const ptData = await ptRes.json();
 
-        // Text forecast fallback if no marine zone succeeded.
         if (!periods.length) {
           const fcRes = await fetch(ptData.properties?.forecast, { headers: hdrs });
           if (fcRes.ok) {
@@ -349,7 +311,6 @@ const App = (() => {
           }
         }
 
-        // Gridpoint wave height (NWS numerical forecast, meters → feet).
         const gdRes = await fetch(ptData.properties?.forecastGridData, { headers: hdrs });
         if (gdRes.ok) {
           const gd = await gdRes.json();
@@ -358,7 +319,6 @@ const App = (() => {
             .filter((v) => v.value !== null && v.validTime.slice(0, 10) === dateStr);
           if (vals.length) {
             const avg = vals.reduce((s, v) => s + v.value, 0) / vals.length;
-            // Convert to feet: NWS uses meters unless uom explicitly says feet.
             wavesFt = uom.includes("ft") ? avg : avg * 3.28084;
           }
         }
@@ -366,12 +326,12 @@ const App = (() => {
     } catch (_) {}
 
     if (!periods.length && wavesFt === null) return null;
-    return { source, zoneName, zoneId, periods, wavesFt };
+    return { source, zoneName, periods, wavesFt };
   }
 
   function renderNWSForecast(data) {
     const { lat, lon } = state.location;
-    const nwsUrl  = `https://forecast.weather.gov/MapClick.php?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}&unit=0&lg=en&FcstType=text`;
+    const nwsUrl   = `https://forecast.weather.gov/MapClick.php?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}&unit=0&lg=en&FcstType=text`;
     const marinUrl = `https://marine.weather.gov/MapClick.php?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}&unit=0&lg=en&FcstType=text`;
 
     els.nwsLink.innerHTML =
@@ -379,8 +339,7 @@ const App = (() => {
       ` &nbsp;·&nbsp; <a href="${nwsUrl}" target="_blank" rel="noopener">Point Forecast ↗</a>`;
 
     if (!data?.periods?.length && data?.wavesFt == null) {
-      els.nwsContent.innerHTML =
-        `<p class="nws-unavailable">Text forecast unavailable for this location.</p>`;
+      els.nwsContent.innerHTML = `<p class="nws-unavailable">NWS text forecast unavailable here.</p>`;
       return;
     }
 
@@ -425,7 +384,6 @@ const App = (() => {
     const url = `https://marine-api.open-meteo.com/v1/marine?${params}`;
     const res = await fetch(url);
     if (!res.ok) {
-      // Some locations (deep inland) return errors — propagate.
       const txt = await res.text();
       throw new Error(`Marine forecast unavailable here (try a coastal location). ${txt}`);
     }
@@ -460,19 +418,16 @@ const App = (() => {
     const mTimes = marine.hourly?.time;
     if (!wTimes || !mTimes) return null;
 
-    // Find indices of requested date in weather array.
     const matchIdxs = [];
     for (let i = 0; i < wTimes.length; i++) {
       if (wTimes[i].slice(0, 10) === dateStr) matchIdxs.push(i);
     }
     if (matchIdxs.length === 0) return null;
 
-    // Map weather indices to marine indices by matching ISO timestamps.
     const marineIdxMap = new Map(mTimes.map((t, i) => [t, i]));
 
     let selectedIdxs;
     if (hour === "all") {
-      // Daylight only: 7am-7pm.
       selectedIdxs = matchIdxs.filter((i) => {
         const h = parseInt(wTimes[i].slice(11, 13), 10);
         return h >= 7 && h <= 19;
@@ -485,17 +440,10 @@ const App = (() => {
       selectedIdxs = [found];
     }
 
-    // Build per-hour data array (for hourly strip).
     const dailyHours = matchIdxs.map((i) => buildHourData(i, marineIdxMap, marine, weather, wTimes));
-
-    // Conditions used for grading = aggregate (mean) of selectedIdxs.
     const agg = aggregate(selectedIdxs, marineIdxMap, marine, weather);
 
-    return {
-      conditions: agg,
-      dailyHours,
-      selectedIdxs,
-    };
+    return { conditions: agg, dailyHours, selectedIdxs };
   }
 
   function buildHourData(idx, marineIdxMap, marine, weather, wTimes) {
@@ -515,8 +463,6 @@ const App = (() => {
       waveHeight: mIdx != null ? marine.hourly.wave_height[mIdx] : null,
       wavePeriod: mIdx != null ? marine.hourly.wave_period[mIdx] : null,
       waveDirection: mIdx != null ? marine.hourly.wave_direction[mIdx] : null,
-      swellHeight: mIdx != null ? marine.hourly.swell_wave_height[mIdx] : null,
-      swellPeriod: mIdx != null ? marine.hourly.swell_wave_period[mIdx] : null,
     };
   }
 
@@ -533,7 +479,7 @@ const App = (() => {
     };
 
     const temps = [], waves = [], periods = [], winds = [], gusts = [], clouds = [], vis = [], precip = [], dirs = [];
-    let weatherCodeRep = null, repHour = idxs[Math.floor(idxs.length / 2)];
+    const repHour = idxs[Math.floor(idxs.length / 2)];
 
     for (const i of idxs) {
       temps.push(weather.hourly.temperature_2m[i]);
@@ -543,26 +489,24 @@ const App = (() => {
       vis.push(weather.hourly.visibility[i] != null ? weather.hourly.visibility[i] / 1609.344 : null);
       precip.push(weather.hourly.precipitation[i]);
       dirs.push(weather.hourly.wind_direction_10m[i]);
-
       const mIdx = marineIdxMap.get(wTimes[i]);
       if (mIdx != null) {
         waves.push(marine.hourly.wave_height[mIdx]);
         periods.push(marine.hourly.wave_period[mIdx]);
       }
     }
-    weatherCodeRep = weather.hourly.weather_code[repHour];
 
     return {
       temperature: mean(temps),
       waveHeight: mean(waves),
       wavePeriod: mean(periods),
       windSpeed: mean(winds),
-      windGust: max(gusts),                                  // worst-gust matters most
+      windGust: max(gusts),
       cloudCover: mean(clouds),
       visibility: mean(vis),
       precipitation: sum(precip),
       windDirection: mean(dirs),
-      weatherCode: weatherCodeRep,
+      weatherCode: weather.hourly.weather_code[repHour],
       isDay: weather.hourly.is_day[repHour],
     };
   }
@@ -571,8 +515,10 @@ const App = (() => {
   function render(slice, dateStr, hour, tidePreds, nearStation, nwsData) {
     const c = slice.conditions;
     renderHeader(dateStr, hour);
+    const grades = Grading.gradeAll(c);
+    renderVerdict(grades);
     renderSnapshot(c);
-    renderActivities(c);
+    renderActivities(grades);
     renderHourly(slice.dailyHours);
     renderNWSForecast(nwsData);
     renderTides(tidePreds, nearStation, dateStr);
@@ -584,19 +530,47 @@ const App = (() => {
     els.locName.textContent = loc.name;
     const d = new Date(dateStr + "T12:00:00");
     const dateLabel = d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric", year: "numeric" });
-    const hourLabel = hour === "all" ? "Daytime average" : formatHour(parseInt(hour, 10));
+    const hourLabel = hour === "all" ? "Daytime average (7AM–7PM)" : formatHour(parseInt(hour, 10));
     els.locDetail.textContent = `${dateLabel} · ${hourLabel} · ${loc.lat.toFixed(3)}, ${loc.lon.toFixed(3)}`;
+  }
+
+  function renderVerdict(grades) {
+    // Headline verdict = the best (mildest) of the three scenarios,
+    // since bay is usually the safest option even when offshore is rough.
+    const best = Grading.overallVerdict(grades);
+    const worst = grades.reduce((acc, g) => {
+      const order = ["A","B","C","D","F"];
+      return order.indexOf(g.grade) > order.indexOf(acc.grade) ? g : acc;
+    }, grades[0]);
+
+    const tagClass = `verdict-tag-${best.verdict.tag.toLowerCase().replace(/\s+/g, "-")}`;
+    els.verdictBox.innerHTML = `
+      <div class="verdict-headline grade-${best.grade}">
+        <div class="verdict-tag ${tagClass}">${escapeHtml(best.verdict.tag)}</div>
+        <div class="verdict-body">
+          <div class="verdict-title">Best option: ${escapeHtml(best.name)}</div>
+          <div class="verdict-text">${escapeHtml(best.verdict.text)}</div>
+        </div>
+        <div class="verdict-grade grade-${best.grade}">${best.grade}</div>
+      </div>
+      ${worst.key !== best.key ? `
+        <div class="verdict-secondary">
+          <span class="verdict-secondary-label">Toughest scenario:</span>
+          <span class="verdict-secondary-name">${escapeHtml(worst.name)}</span>
+          <span class="verdict-secondary-tag tag-${worst.grade}">${escapeHtml(worst.verdict.tag)}</span>
+        </div>` : ""}
+    `;
   }
 
   function renderSnapshot(c) {
     const items = [
-      { icon: Icons.smallWeatherIcon(c.weatherCode, 36), label: "Sky", value: weatherDesc(c.weatherCode) },
-      { icon: Icons.thermometer(28),                     label: "Air Temp", value: fmt(c.temperature, "°F", 0) },
-      { icon: Icons.seaStateIcon(c.waveHeight),          label: "Seas", value: fmt(c.waveHeight, " ft", 1) },
-      { icon: Icons.wind(28),                            label: "Wind", value: c.windSpeed != null ? `${c.windSpeed.toFixed(0)} kt ${degToCompass(c.windDirection)}` : "—" },
-      { icon: Icons.wind(28),                            label: "Gusts", value: fmt(c.windGust, " kt", 0) },
-      { icon: Icons.compass(28),                         label: "Period", value: fmt(c.wavePeriod, " s", 1) },
-      { icon: Icons.droplet(28),                         label: "Rain", value: fmt(c.precipitation, "″", 2) },
+      { icon: Icons.smallWeatherIcon(c.weatherCode, 36), label: "Sky",        value: weatherDesc(c.weatherCode) },
+      { icon: Icons.thermometer(28),                     label: "Air Temp",   value: fmt(c.temperature, "°F", 0) },
+      { icon: Icons.seaStateIcon(c.waveHeight, 36),      label: "Seas",       value: fmt(c.waveHeight, " ft", 1) },
+      { icon: Icons.wind(28),                            label: "Wind",       value: c.windSpeed != null ? `${c.windSpeed.toFixed(0)} kt ${degToCompass(c.windDirection)}` : "—" },
+      { icon: Icons.wind(28),                            label: "Gusts",      value: fmt(c.windGust, " kt", 0) },
+      { icon: Icons.compass(28),                         label: "Period",     value: fmt(c.wavePeriod, " s", 1) },
+      { icon: Icons.droplet(28),                         label: "Rain",       value: fmt(c.precipitation, "″", 2) },
       { icon: Icons.eye(28),                             label: "Visibility", value: fmt(c.visibility, " mi", 0) },
     ];
 
@@ -611,14 +585,14 @@ const App = (() => {
     `).join("");
   }
 
-  function renderActivities(c) {
-    const grades = Grading.gradeAll(c);
+  function renderActivities(grades) {
     els.activityCards.innerHTML = grades.map((g) => `
       <div class="activity-card grade-${g.grade}">
         <div class="grade-badge grade-${g.grade}">${g.grade}</div>
-        <div class="activity-icon">${Icons.activityIcon(g.key, 44)}</div>
+        <div class="activity-icon">${Icons.activityIcon(g.key, 56)}</div>
         <div class="activity-name">${escapeHtml(g.name)}</div>
-        <div class="activity-summary">${escapeHtml(g.summary)}</div>
+        <div class="activity-blurb">${escapeHtml(g.blurb)}</div>
+        <div class="activity-verdict verdict-tag-${g.verdict.tag.toLowerCase().replace(/\s+/g, "-")}">${escapeHtml(g.verdict.tag)} · ${escapeHtml(g.verdict.text)}</div>
         <ul class="activity-reasons">
           ${(g.concerns.length ? g.concerns : g.highlights).map((r) =>
             `<li>${escapeHtml(r.label)}: ${escapeHtml(r.hint)}</li>`
@@ -660,21 +634,17 @@ const App = (() => {
 
     drawTideChart(predictions, nowHours);
 
-    // Find the next upcoming tide (if today).
     let nextIdx = -1;
-    if (isToday) {
-      nextIdx = predictions.findIndex((p) => p.hours > nowHours);
-    }
+    if (isToday) nextIdx = predictions.findIndex((p) => p.hours > nowHours);
 
     els.tideList.innerHTML = predictions.map((p, i) => {
       const isNext = i === nextIdx;
       const arrow  = p.type === "H" ? "↑" : "↓";
       const label  = p.type === "H" ? "HIGH" : "LOW";
-      const t12    = formatTideTime(p.time);
       return `<div class="tide-item ${p.type === "H" ? "tide-high" : "tide-low"}${isNext ? " tide-next" : ""}">
         <span class="tide-arrow">${arrow}</span>
         <span class="tide-label">${label}</span>
-        <span class="tide-time">${t12}</span>
+        <span class="tide-time">${formatTideTime(p.time)}</span>
         <span class="tide-ht">${p.v.toFixed(1)} ft</span>
         ${isNext ? '<span class="tide-next-badge">Next</span>' : ""}
       </div>`;
@@ -691,7 +661,6 @@ const App = (() => {
     const px = (hours) => PAD + (hours / 24) * (W - PAD * 2);
     const py = (v) => H - PAD / 2 - ((v - minV) / range) * (H - PAD);
 
-    // Generate 96 interpolated points (every 15 min).
     const pts = [];
     for (let i = 0; i <= 96; i++) {
       const t = (i / 96) * 24;
@@ -700,30 +669,27 @@ const App = (() => {
     const pathD = pts.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
     const fillD = `${pathD} L${px(24)},${H} L${px(0)},${H} Z`;
 
-    // H/L markers and labels.
     const markers = predictions.map((p) => {
       const x = px(p.hours).toFixed(1);
       const y = py(p.v).toFixed(1);
       const isHigh = p.type === "H";
       const labelY = isHigh ? (+y - 8).toFixed(1) : (+y + 16).toFixed(1);
-      return `<circle cx="${x}" cy="${y}" r="4" fill="${isHigh ? "#4A90D9" : "#87CEEB"}" stroke="#fff" stroke-width="1.5"/>
+      return `<circle cx="${x}" cy="${y}" r="4" fill="${isHigh ? "#2E6FB5" : "#87CEEB"}" stroke="#fff" stroke-width="1.5"/>
               <text x="${x}" y="${labelY}" text-anchor="middle" class="tide-label-text">${formatTideTime(p.time)} · ${p.v.toFixed(1)}ft</text>`;
     }).join("");
 
-    // "Now" cursor.
     const nowLine = nowHours != null
       ? `<line x1="${px(nowHours).toFixed(1)}" y1="0" x2="${px(nowHours).toFixed(1)}" y2="${H}" stroke="#E74C3C" stroke-width="1.5" stroke-dasharray="3,2"/>`
       : "";
 
-    // Hour tick labels (6am, 12pm, 6pm).
     const ticks = [[6, "6 AM"], [12, "12 PM"], [18, "6 PM"]].map(([h, lbl]) =>
       `<text x="${px(h).toFixed(1)}" y="${H + 12}" text-anchor="middle" class="tide-tick-text">${lbl}</text>`
     ).join("");
 
     els.tideChart.innerHTML =
       `<svg viewBox="0 -4 ${W} ${H + 18}" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block">
-        <path d="${fillD}" fill="#4A90D9" fill-opacity="0.12"/>
-        <path d="${pathD}" fill="none" stroke="#4A90D9" stroke-width="2" stroke-linejoin="round"/>
+        <path d="${fillD}" fill="#2E6FB5" fill-opacity="0.12"/>
+        <path d="${pathD}" fill="none" stroke="#2E6FB5" stroke-width="2" stroke-linejoin="round"/>
         ${nowLine}
         ${markers}
         ${ticks}
@@ -773,7 +739,6 @@ const App = (() => {
       45: "Fog", 48: "Rime fog",
       51: "Light drizzle", 53: "Drizzle", 55: "Heavy drizzle",
       61: "Light rain", 63: "Rain", 65: "Heavy rain",
-      71: "Light snow", 73: "Snow", 75: "Heavy snow",
       80: "Showers", 81: "Heavy showers", 82: "Violent showers",
       95: "Thunderstorm", 96: "Storm w/ hail", 99: "Severe storm",
     };
@@ -786,7 +751,6 @@ const App = (() => {
     })[c]);
   }
 
-  // ---------- UI feedback ----------
   function showLoading() { els.loading.hidden = false; }
   function hideLoading() { els.loading.hidden = true; }
   function showError(msg) { els.errorBox.textContent = msg; els.errorBox.hidden = false; }

@@ -1,7 +1,35 @@
-/* ============ Beautiful Day — SVG Icon Library ============ */
-/* All icons are cartoon-style, marine sunny-day themed. */
+/* ============ FishyBoat — SVG Icon Library ============ */
+/* Cartoon-style, sunny-day nautical theme. Blue / white / yellow. */
 
 const Icons = (() => {
+
+  // ---------- Logo ----------
+  const logo = (size = 80) => `
+    <svg viewBox="0 0 200 80" width="${size * 2.5}" height="${size}" aria-label="FishyBoat">
+      <!-- Sun -->
+      <circle cx="170" cy="20" r="12" fill="#FFD93D" stroke="#F0A929" stroke-width="2"/>
+      <g stroke="#F0A929" stroke-width="2" stroke-linecap="round">
+        <line x1="170" y1="2" x2="170" y2="8"/>
+        <line x1="186" y1="20" x2="192" y2="20"/>
+        <line x1="158" y1="8" x2="162" y2="12"/>
+        <line x1="178" y1="8" x2="182" y2="12"/>
+      </g>
+      <!-- Fish body (yellow) -->
+      <path d="M55 48 Q35 36 18 48 Q35 60 55 48 Z" fill="#FFD93D" stroke="#F0A929" stroke-width="2"/>
+      <!-- Fish tail -->
+      <polygon points="55,48 70,38 70,58" fill="#FFD93D" stroke="#F0A929" stroke-width="2"/>
+      <!-- Fish eye -->
+      <circle cx="26" cy="46" r="2" fill="#0F2A47"/>
+      <circle cx="27" cy="45" r="0.7" fill="#fff"/>
+      <!-- Boat above -->
+      <path d="M80 50 L160 50 L150 64 L92 64 Z" fill="#FFFFFF" stroke="#2E6FB5" stroke-width="2.5"/>
+      <line x1="120" y1="20" x2="120" y2="50" stroke="#8B5A2B" stroke-width="2.5"/>
+      <polygon points="120,22 120,46 148,46" fill="#FFD93D" stroke="#F0A929" stroke-width="2"/>
+      <polygon points="118,26 118,44 100,44" fill="#FFFFFF" stroke="#2E6FB5" stroke-width="2"/>
+      <!-- Waves -->
+      <path d="M4 72 Q14 66 24 72 T44 72 T64 72 T84 72 T104 72 T124 72 T144 72 T164 72 T184 72 T200 72"
+            stroke="#2E6FB5" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    </svg>`;
 
   // ---------- Weather icons ----------
   const sunny = (size = 56) => `
@@ -17,9 +45,6 @@ const Icons = (() => {
         <line x1="46" y1="18" x2="52" y2="12"/>
       </g>
       <circle cx="32" cy="32" r="14" fill="#FFD93D" stroke="#F0A929" stroke-width="2"/>
-      <circle cx="28" cy="29" r="2" fill="#7B5800"/>
-      <circle cx="36" cy="29" r="2" fill="#7B5800"/>
-      <path d="M27 36 Q32 40 37 36" stroke="#7B5800" stroke-width="2" fill="none" stroke-linecap="round"/>
     </svg>`;
 
   const partlyCloudy = (size = 56) => `
@@ -67,7 +92,7 @@ const Icons = (() => {
       </g>
     </svg>`;
 
-  // ---------- Wave / Sea state icons ----------
+  // ---------- Sea state icons ----------
   const wavesCalm = (size = 56) => `
     <svg viewBox="0 0 64 64" width="${size}" height="${size}">
       <circle cx="48" cy="14" r="6" fill="#FFD93D"/>
@@ -90,10 +115,10 @@ const Icons = (() => {
       <path d="M34 14 Q38 8 42 14" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round"/>
     </svg>`;
 
-  // ---------- Wind icon ----------
+  // ---------- Misc icons ----------
   const wind = (size = 28) => `
     <svg viewBox="0 0 32 32" width="${size}" height="${size}">
-      <g stroke="#4A90D9" stroke-width="2.5" fill="none" stroke-linecap="round">
+      <g stroke="#2E6FB5" stroke-width="2.5" fill="none" stroke-linecap="round">
         <path d="M4 10 L22 10 Q26 10 26 6"/>
         <path d="M4 16 L26 16 Q30 16 30 20"/>
         <path d="M4 22 L20 22 Q24 22 24 26"/>
@@ -109,14 +134,14 @@ const Icons = (() => {
 
   const compass = (size = 28) => `
     <svg viewBox="0 0 32 32" width="${size}" height="${size}">
-      <circle cx="16" cy="16" r="12" fill="#FFFFFF" stroke="#4A90D9" stroke-width="2"/>
+      <circle cx="16" cy="16" r="12" fill="#FFFFFF" stroke="#2E6FB5" stroke-width="2"/>
       <polygon points="16,6 19,16 16,14 13,16" fill="#E74C3C"/>
       <polygon points="16,26 19,16 16,18 13,16" fill="#2E6FB5"/>
     </svg>`;
 
   const eye = (size = 28) => `
     <svg viewBox="0 0 32 32" width="${size}" height="${size}">
-      <path d="M2 16 Q16 4 30 16 Q16 28 2 16 Z" fill="#FFFFFF" stroke="#4A90D9" stroke-width="2"/>
+      <path d="M2 16 Q16 4 30 16 Q16 28 2 16 Z" fill="#FFFFFF" stroke="#2E6FB5" stroke-width="2"/>
       <circle cx="16" cy="16" r="5" fill="#4A90D9"/>
       <circle cx="16" cy="16" r="2" fill="#0F2A47"/>
     </svg>`;
@@ -127,95 +152,60 @@ const Icons = (() => {
     </svg>`;
 
   // ---------- Activity icons ----------
-  const fishingRod = (size = 44) => `
+  const offshoreBoat = (size = 44) => `
     <svg viewBox="0 0 48 48" width="${size}" height="${size}">
-      <line x1="8" y1="40" x2="40" y2="6" stroke="#8B5A2B" stroke-width="3" stroke-linecap="round"/>
-      <line x1="36" y1="10" x2="36" y2="32" stroke="#666" stroke-width="1.5"/>
-      <path d="M30 32 Q32 36 36 34 Q38 32 36 28 Q33 30 30 32 Z M28 32 L24 31" fill="#4A90D9" stroke="#2E6FB5" stroke-width="1.5" stroke-linejoin="round"/>
-      <circle cx="34" cy="30" r="1.2" fill="#0F2A47"/>
-      <path d="M2 42 Q8 38 14 42 T26 42 T46 42" stroke="#4A90D9" stroke-width="2" fill="none"/>
+      <!-- Center console fishing boat -->
+      <path d="M4 30 L8 36 L40 36 L44 30 Z" fill="#FFFFFF" stroke="#2E6FB5" stroke-width="2"/>
+      <rect x="20" y="20" width="8" height="10" fill="#FFD93D" stroke="#F0A929" stroke-width="1.5"/>
+      <rect x="22" y="24" width="4" height="4" fill="#A8C5DD"/>
+      <line x1="24" y1="10" x2="24" y2="20" stroke="#0F2A47" stroke-width="1.5"/>
+      <circle cx="24" cy="10" r="2" fill="#E74C3C"/>
+      <!-- Fishing rod -->
+      <line x1="36" y1="32" x2="46" y2="14" stroke="#8B5A2B" stroke-width="2" stroke-linecap="round"/>
+      <line x1="44" y1="16" x2="40" y2="28" stroke="#666" stroke-width="0.8"/>
+      <!-- Waves -->
+      <path d="M2 40 Q10 36 18 40 T34 40 T48 40" stroke="#2E6FB5" stroke-width="2" fill="none" stroke-linecap="round"/>
     </svg>`;
 
-  const sandbar = (size = 44) => `
+  const bayBoat = (size = 44) => `
     <svg viewBox="0 0 48 48" width="${size}" height="${size}">
-      <circle cx="38" cy="10" r="6" fill="#FFD93D"/>
-      <path d="M2 38 Q12 30 24 36 T46 32 L46 44 L2 44 Z" fill="#FFE89C" stroke="#E8B900" stroke-width="1.5"/>
-      <ellipse cx="14" cy="32" rx="6" ry="2" fill="#E8B900" opacity="0.4"/>
-      <line x1="26" y1="14" x2="26" y2="34" stroke="#8B5A2B" stroke-width="2"/>
-      <path d="M16 20 Q26 8 36 20 Z" fill="#E74C3C" stroke="#8B2D2D" stroke-width="1.5"/>
-      <path d="M16 20 L36 20" stroke="#8B2D2D" stroke-width="1"/>
+      <!-- Calm bay scene with skiff -->
+      <path d="M6 32 L10 38 L38 38 L42 32 Z" fill="#FFFFFF" stroke="#2E6FB5" stroke-width="2"/>
+      <line x1="24" y1="16" x2="24" y2="32" stroke="#0F2A47" stroke-width="1.5"/>
+      <!-- Bent fishing rod -->
+      <path d="M30 32 Q40 24 44 12" stroke="#8B5A2B" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <circle cx="44" cy="12" r="1.5" fill="#FFD93D"/>
+      <!-- Mangrove hint -->
+      <ellipse cx="6" cy="28" rx="3" ry="4" fill="#2E6FB5" opacity="0.45"/>
+      <ellipse cx="42" cy="28" rx="3" ry="4" fill="#2E6FB5" opacity="0.45"/>
+      <!-- Calm waves -->
+      <path d="M2 42 Q10 40 18 42 T34 42 T48 42" stroke="#2E6FB5" stroke-width="1.5" fill="none" stroke-linecap="round"/>
     </svg>`;
 
-  const snorkel = (size = 44) => `
+  const reefBoat = (size = 44) => `
     <svg viewBox="0 0 48 48" width="${size}" height="${size}">
-      <path d="M8 18 L8 28 Q8 36 18 36 L30 36 Q40 36 40 28 L40 18 Q40 12 30 12 L18 12 Q8 12 8 18 Z" fill="#4A90D9" stroke="#2E6FB5" stroke-width="2"/>
-      <ellipse cx="18" cy="22" rx="5" ry="4" fill="#CFEAF7"/>
-      <ellipse cx="30" cy="22" rx="5" ry="4" fill="#CFEAF7"/>
-      <line x1="38" y1="14" x2="38" y2="4" stroke="#E74C3C" stroke-width="3" stroke-linecap="round"/>
-      <rect x="36" y="4" width="4" height="3" fill="#E74C3C"/>
-    </svg>`;
-
-  const diving = (size = 44) => `
-    <svg viewBox="0 0 48 48" width="${size}" height="${size}">
-      <rect x="18" y="6" width="12" height="18" rx="3" fill="#FFD93D" stroke="#F0A929" stroke-width="2"/>
-      <rect x="20" y="24" width="8" height="4" fill="#666"/>
-      <circle cx="24" cy="34" r="6" fill="#FFE0BD" stroke="#0F2A47" stroke-width="1.5"/>
-      <path d="M18 30 Q20 26 24 28 Q28 26 30 30" stroke="#0F2A47" stroke-width="1.5" fill="none"/>
-      <path d="M30 36 L40 32 L40 40 L36 38 Z" fill="#4A90D9" stroke="#2E6FB5" stroke-width="1.5"/>
-      <circle cx="6" cy="14" r="2" fill="#A8C5DD" opacity="0.7"/>
-      <circle cx="4" cy="22" r="1.5" fill="#A8C5DD" opacity="0.6"/>
-    </svg>`;
-
-  const sailing = (size = 44) => `
-    <svg viewBox="0 0 48 48" width="${size}" height="${size}">
-      <line x1="24" y1="4" x2="24" y2="32" stroke="#8B5A2B" stroke-width="2"/>
-      <polygon points="24,6 24,30 8,30" fill="#FFFFFF" stroke="#A8C5DD" stroke-width="1.5"/>
-      <polygon points="26,10 26,30 40,30" fill="#FFD93D" stroke="#F0A929" stroke-width="1.5"/>
-      <path d="M6 34 L42 34 L36 42 L12 42 Z" fill="#8B5A2B" stroke="#5C3A1A" stroke-width="1.5"/>
-      <path d="M2 44 Q12 40 22 44 T42 44" stroke="#4A90D9" stroke-width="2" fill="none"/>
-    </svg>`;
-
-  const paddleboard = (size = 44) => `
-    <svg viewBox="0 0 48 48" width="${size}" height="${size}">
-      <ellipse cx="24" cy="34" rx="20" ry="5" fill="#FFD93D" stroke="#F0A929" stroke-width="2"/>
-      <line x1="14" y1="8" x2="22" y2="32" stroke="#8B5A2B" stroke-width="2" stroke-linecap="round"/>
-      <ellipse cx="14" cy="8" rx="3" ry="2" fill="#8B5A2B"/>
-      <circle cx="22" cy="20" r="4" fill="#FFE0BD" stroke="#0F2A47" stroke-width="1.5"/>
-      <rect x="20" y="24" width="4" height="8" fill="#4A90D9"/>
-      <path d="M2 42 Q12 38 24 42 T46 42" stroke="#4A90D9" stroke-width="2" fill="none"/>
-    </svg>`;
-
-  const kayaking = (size = 44) => `
-    <svg viewBox="0 0 48 48" width="${size}" height="${size}">
-      <ellipse cx="24" cy="28" rx="20" ry="6" fill="#E74C3C" stroke="#8B2D2D" stroke-width="2"/>
-      <ellipse cx="24" cy="28" rx="14" ry="3" fill="#8B2D2D"/>
-      <circle cx="24" cy="22" r="4" fill="#FFE0BD" stroke="#0F2A47" stroke-width="1.5"/>
-      <line x1="6" y1="16" x2="42" y2="34" stroke="#8B5A2B" stroke-width="2" stroke-linecap="round"/>
-      <ellipse cx="6" cy="16" rx="3" ry="2" fill="#8B5A2B" transform="rotate(-20 6 16)"/>
-      <ellipse cx="42" cy="34" rx="3" ry="2" fill="#8B5A2B" transform="rotate(-20 42 34)"/>
+      <!-- Sun -->
+      <circle cx="40" cy="10" r="4" fill="#FFD93D"/>
+      <!-- Boat -->
+      <path d="M4 26 L8 32 L36 32 L40 26 Z" fill="#FFFFFF" stroke="#2E6FB5" stroke-width="2"/>
+      <rect x="18" y="18" width="6" height="8" fill="#FFD93D" stroke="#F0A929" stroke-width="1.5"/>
+      <!-- Wave breaking over reef -->
+      <path d="M2 36 Q10 28 16 36" stroke="#2E6FB5" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M14 38 Q18 32 22 38" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <!-- Reef rocks -->
+      <path d="M4 42 L10 38 L14 42 L20 38 L26 42 L32 38 L38 42 L46 38 L46 46 L4 46 Z"
+            fill="#8B5A2B" stroke="#5C3A1A" stroke-width="1"/>
+      <ellipse cx="22" cy="44" rx="3" ry="1" fill="#E74C3C" opacity="0.6"/>
     </svg>`;
 
   const buoyIcon = (size = 28) => `
     <svg viewBox="0 0 32 32" width="${size}" height="${size}">
       <path d="M16 4 L22 16 L10 16 Z" fill="#E74C3C" stroke="#8B2D2D" stroke-width="1.5"/>
       <rect x="14" y="16" width="4" height="6" fill="#FFD93D" stroke="#F0A929" stroke-width="1"/>
-      <path d="M4 26 Q10 22 16 26 T28 26" stroke="#4A90D9" stroke-width="2" fill="none"/>
+      <path d="M4 26 Q10 22 16 26 T28 26" stroke="#2E6FB5" stroke-width="2" fill="none"/>
     </svg>`;
 
   // ---------- Helpers ----------
-  // Map Open-Meteo weather codes to a category.
-  // See: https://open-meteo.com/en/docs (WMO codes)
-  function weatherIconForCode(code, isDay = true) {
-    if (code === 0) return isDay ? sunny() : sunny();
-    if (code === 1 || code === 2) return partlyCloudy();
-    if (code === 3) return cloudy();
-    if (code === 45 || code === 48) return foggy();
-    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return rainy();
-    if (code >= 71 && code <= 77) return cloudy();
-    if (code >= 95) return stormy();
-    return partlyCloudy();
-  }
-
   function smallWeatherIcon(code, size = 32) {
     if (code === 0) return sunny(size);
     if (code === 1 || code === 2) return partlyCloudy(size);
@@ -227,32 +217,27 @@ const Icons = (() => {
     return partlyCloudy(size);
   }
 
-  function seaStateIcon(waveHeightFt) {
-    if (waveHeightFt == null) return wavesCalm();
-    if (waveHeightFt < 2) return wavesCalm();
-    if (waveHeightFt < 4) return wavesModerate();
-    return wavesRough();
+  function seaStateIcon(waveHeightFt, size = 56) {
+    if (waveHeightFt == null) return wavesCalm(size);
+    if (waveHeightFt < 2) return wavesCalm(size);
+    if (waveHeightFt < 4) return wavesModerate(size);
+    return wavesRough(size);
   }
 
   function activityIcon(key, size = 44) {
     switch (key) {
-      case "fishing-offshore": return fishingRod(size);
-      case "fishing-bay":      return fishingRod(size);
-      case "sandbar":          return sandbar(size);
-      case "snorkeling":       return snorkel(size);
-      case "diving":           return diving(size);
-      case "sailing":          return sailing(size);
-      case "paddleboarding":   return paddleboard(size);
-      case "kayaking":         return kayaking(size);
-      default: return sunny(size);
+      case "fishing-offshore": return offshoreBoat(size);
+      case "fishing-bay":      return bayBoat(size);
+      case "fishing-reef":     return reefBoat(size);
+      default: return offshoreBoat(size);
     }
   }
 
   return {
+    logo,
     sunny, partlyCloudy, cloudy, rainy, stormy, foggy,
     wavesCalm, wavesModerate, wavesRough,
     wind, thermometer, compass, eye, droplet, buoyIcon,
-    weatherIconForCode, smallWeatherIcon, seaStateIcon,
-    activityIcon,
+    smallWeatherIcon, seaStateIcon, activityIcon,
   };
 })();
